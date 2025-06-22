@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Society Maintenance System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f4f8;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #e5e7eb;
+        }
+        .breakdown {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+        .breakdown div {
+            margin-bottom: 5px;
+        }
+        .qr-code-container {
+            background-color: #ffe6e6;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .qr-code-container img {
+            max-width: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Section -->
+        <div id="loginSection">
+            <h1 class="text-3xl font-bold text-center mb-6">Society Maintenance System</h1>
+            <div class="bg-white p-6 rounded-lg shadow-md max-w-md mx-auto">
+                <h2 class="text-xl font-semibold mb-4">Login</h2>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Username</label>
+                    <input type="text" id="username" class="w-full p-2 border rounded" placeholder="Enter username">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Password</label>
+                    <input type="password" id="password" class="w-full p-2 border rounded" placeholder="Enter password">
+                </div>
+                <button onclick="login()" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Login</button>
+            </div>
+        </div>
+
+        <!-- Admin Panel -->
+        <div id="adminPanel" class="hidden">
+            <h1 class="text-3xl font-bold mb-6">Admin Panel</h1>
+            <button onclick="logout()" class="bg-red-500 text-white p-2 rounded hover:bg-red-600 mb-4">Logout</button>
+            <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h2 class="text-xl font-semibold mb-4">Create Custom Bill</h2>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Username</label>
+                    <select id="customUsername" class="w-full p-2 border rounded">
+                        <option value="">Select User</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Month</label>
+                    <input type="month" id="customMonth" class="w-full p-2 border rounded">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium mb-1">Breakdown</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm">Maintenance (₹)</label>
+                            <input type="number" id="maintenance" class="w-full p-2 border rounded" value="800">
+                        </div>
+                        <div>
+                            <label class="block text-sm">Water (₹)</label>
+                            <input type="number" id="water" class="w-full p-2 border rounded" value="300">
+                        </div>
+                        <div>
+                            <label class="block text-sm">Security (₹)</label>
+                            <input type="number" id="security" class="w-full p-2 border rounded" value="300">
+                        </div>
+                        <div>
+                            <label class="block text-sm">Sinking Fund (₹)</label>
+                            <input type="number" id="sinkingFund" class="w-full p-2 border rounded" value="100">
+                        </div>
+                    </div>
+                </div>
+                <button onclick="createCustomBill()" class="bg-green-500 text-white p-2 rounded hover:bg-green-600">Create Bill</button>
+            </div>
+            <h2 id="adminBillsHeader" class="text-2xl font-semibold mb-4">Member Bills</h2>
+            <table id="adminBillsTable">
+                <thead>
+                    <tr>
+                        <th>Wing</th>
+                        <th>Username</th>
+                        <th>Month</th>
+                        <th>Amount (₹)</th>
+                        <th>Status</th>
+                        <th>Breakdown</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- User Panel -->
+        <div id="userPanel" class="hidden">
+            <h1 class="text-3xl font-bold mb-6">User Panel</h1>
+            <button onclick="logout()" class="bg-red-500 text-white p-2 rounded hover:bg-red-600 mb-4">Logout</button>
+            <h2 id="userBillsHeader" class="text-2xl font-semibold mb-4">Your Bills</h2>
+            <table id="userBillsTable">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th>Amount (₹)</th>
+                        <th>Status</th>
+                        <th>Breakdown</th>
+                        <th>Payment</th>
+                        <th>Receipt</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let currentUsername = '';
+        let currentMonth = new Date().toISOString().slice(0, 7);
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                currentUsername = username;
+                document.getElementById('loginSection').classList.add('hidden');
+                if (data.role === 'admin') {
+                    document.getElementById('adminPanel').classList.remove('hidden');
+                    await populateAdminPanel();
+                } else {
+                    document.getElementById('userPanel').classList.remove('hidden');
+                    await populateUserPanel();
+                }
+            } else {
+                alert('Login failed. Please check your credentials.');
+            }
+        }
+
+        function logout() {
+            currentUsername = '';
+            document.getElementById('adminPanel').classList.add('hidden');
+            document.getElementById('userPanel').classList.add('hidden');
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        async function populateAdminPanel() {
+            const response = await fetch('/bills');
+            const bills = await response.json();
+            const usernames = [...new Set(bills.map(bill => bill.username))];
+            const select = document.getElementById('customUsername');
+            select.innerHTML = '<option value="">Select User</option>';
+            usernames.forEach(username => {
+                const option = document.createElement('option');
+                option.value = username;
+                option.textContent = username;
+                select.appendChild(option);
+            });
+
+            const tableBody = document.getElementById('adminBillsTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
+            document.getElementById('adminBillsHeader').textContent = `Member Bills for ${currentMonth}`;
+            bills.forEach(bill => {
+                const row = tableBody.insertRow();
+                row.insertCell(0).textContent = bill.wing;
+                row.insertCell(1).textContent = bill.username;
+                row.insertCell(2).textContent = bill.month;
+                row.insertCell(3).textContent = bill.amount;
+                const statusCell = row.insertCell(4);
+                const statusSelect = document.createElement('select');
+                ['Pending', 'Paid'].forEach(status => {
+                    const option = document.createElement('option');
+                    option.value = status;
+                    option.textContent = status;
+                    if (status === bill.status) option.selected = true;
+                    statusSelect.appendChild(option);
+                });
+                statusCell.appendChild(statusSelect);
+                const breakdownCell = row.insertCell(5);
+                const breakdownDiv = document.createElement('div');
+                breakdownDiv.className = 'breakdown';
+                breakdownDiv.innerHTML = `
+                    <div>Maintenance: <input type="number" value="${bill.breakdown.maintenance}" class="w-24 p-1 border rounded"></div>
+                    <div>Water: <input type="number" value="${bill.breakdown.water}" class="w-24 p-1 border rounded"></div>
+                    <div>Security: <input type="number" value="${bill.breakdown.security}" class="w-24 p-1 border rounded"></div>
+                    <div>Sinking Fund: <input type="number" value="${bill.breakdown.sinking_fund}" class="w-24 p-1 border rounded"></div>
+                `;
+                breakdownCell.appendChild(breakdownDiv);
+                const actionsCell = row.insertCell(6);
+                const saveButton = document.createElement('button');
+                saveButton.textContent = 'Save';
+                saveButton.className = 'bg-blue-500 text-white p-1 rounded hover:bg-blue-600';
+                saveButton.onclick = () => editBill(bill.id, statusSelect.value, breakdownDiv);
+                actionsCell.appendChild(saveButton);
+            });
+        }
+
+        async function populateUserPanel() {
+            const response = await fetch(`/bills/${currentUsername}`);
+            const bills = await response.json();
+            const tableBody = document.getElementById('userBillsTable').getElementsByTagName('tbody')[0];
+            tableBody.innerHTML = '';
+            document.getElementById('userBillsHeader').textContent = `Your Bills for ${currentMonth}`;
+            if (bills.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6">No bills found for this month.</td></tr>';
+                console.warn(`No bills found for user ${currentUsername} in month ${currentMonth}`);
+                return;
+            }
+            bills.forEach(bill => {
+                if (!bill.id) {
+                    console.error(`Invalid bill ID for bill: ${JSON.stringify(bill)}`);
+                    return;
+                }
+                const row = tableBody.insertRow();
+                row.insertCell(0).textContent = bill.month;
+                row.insertCell(1).textContent = bill.amount;
+                row.insertCell(2).textContent = bill.status;
+                const breakdownCell = row.insertCell(3);
+                breakdownCell.innerHTML = `
+                    <div class="breakdown">
+                        <div>Maintenance: ₹${bill.breakdown.maintenance}</div>
+                        <div>Water: ₹${bill.breakdown.water}</div>
+                        <div>Security: ₹${bill.breakdown.security}</div>
+                        <div>Sinking Fund: ₹${bill.breakdown.sinking_fund}</div>
+                    </div>
+                `;
+                const paymentCell = row.insertCell(4);
+                const qrDiv = document.createElement('div');
+                qrDiv.className = 'qr-code-container';
+                const timestamp = new Date().getTime();
+                qrDiv.innerHTML = `
+                    <img src="/qr_code/${bill.id}?t=${timestamp}" alt="QR Code" onload="console.log('QR code loaded for bill ${bill.id}')" onerror="retryQRCode(this, ${bill.id}, 3)">
+                    <br>
+                    <a href="/qr_code/${bill.id}" download class="text-blue-500 hover:underline">Download QR Code</a>
+                    <p>Scan to pay via UPI. Admin will update status after payment.</p>
+                `;
+                paymentCell.appendChild(qrDiv);
+                const receiptCell = row.insertCell(5);
+                if (bill.status === 'Paid') {
+                    receiptCell.innerHTML = `
+                        <a href="/generate_bill_receipt/${bill.id}" download class="text-blue-500 hover:underline">Download Receipt</a>
+                    `;
+                } else {
+                    receiptCell.textContent = 'Pending';
+                }
+            });
+        }
+
+        function retryQRCode(imgElement, billId, retriesLeft) {
+            if (retriesLeft <= 0) {
+                imgElement.parentElement.innerHTML = `<p>Failed to load QR code for bill ID ${billId}. Please contact support or try refreshing the page.</p>`;
+                console.error(`Failed to load QR code for bill ${billId} after retries.`);
+                return;
+            }
+            console.warn(`Retrying QR code load for bill ${billId}, ${retriesLeft} retries left.`);
+            setTimeout(() => {
+                const timestamp = new Date().getTime();
+                imgElement.src = `/qr_code/${billId}?t=${timestamp}`;
+            }, 1000);
+        }
+
+        async function createCustomBill() {
+            const username = document.getElementById('customUsername').value;
+            const month = document.getElementById('customMonth').value;
+            const breakdown = {
+                maintenance: document.getElementById('maintenance').value,
+                water: document.getElementById('water').value,
+                security: document.getElementById('security').value,
+                sinking_fund: document.getElementById('sinkingFund').value
+            };
+
+            if (!username || !month) {
+                alert('Please fill in all fields.');
+                return;
+            }
+
+            try {
+                const response = await fetch('/create_custom_bill', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, month, breakdown })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    currentMonth = month;
+                    await populateAdminPanel();
+                    alert('Custom bill created successfully.');
+                } else {
+                    console.error('Failed to create bill:', data.error || 'Unknown error');
+                    alert('Failed to create bill: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error creating custom bill:', error);
+                alert('Error creating bill: ' + error.message);
+            }
+        }
+
+        async function editBill(billId, status, breakdownDiv) {
+            const inputs = breakdownDiv.getElementsByTagName('input');
+            const breakdown = {
+                maintenance: inputs[0].value,
+                water: inputs[1].value,
+                security: inputs[2].value,
+                sinking_fund: inputs[3].value
+            };
+
+            const response = await fetch('/edit_bill', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: billId, status, breakdown })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Bill updated successfully.');
+                await populateAdminPanel();
+                console.log(`Bill ${billId} updated with new amount: ₹${data.new_amount}`);
+            } else {
+                alert('Failed to update bill.');
+            }
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'93b5cfd08a8d44fc',t:'MTc0NjUwNjU1NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+</body>
+</html>
